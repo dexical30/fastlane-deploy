@@ -2,3 +2,7 @@ credentials
 ci.env
 
 .gitconfig
+
+*.ipa
+*.apk
+*.zip

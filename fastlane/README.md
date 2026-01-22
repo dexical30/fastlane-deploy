@@ -23,6 +23,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 
 
+### ios setup_appstore
+
+```sh
+[bundle exec] fastlane ios setup_appstore
+```
+
+Create App Store Connect app if missing
+
 ----
 
 

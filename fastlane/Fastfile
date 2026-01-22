@@ -35,6 +35,8 @@ platform :ios do
     validate_env_var("APPLE_STORE_CONNECT_API_KEY_ISSUER_ID")
     validate_env_var("APPLE_STORE_CONNECT_API_KEY_PATH")
 
+    validate_env_var("FASTLANE_APPLE_ID")
+
     api_key = app_store_connect_api_key(
       key_id: ENV["APPLE_STORE_CONNECT_API_KEY_ID"],
       issuer_id: ENV["APPLE_STORE_CONNECT_API_KEY_ISSUER_ID"],
@@ -135,6 +137,8 @@ platform :android do
     upload_to_play_store(
       track: "internal",
       aab: File.join(app_root, "android", "app", "build", "outputs", "bundle", "release", "app-release.aab"),
+      package_name: ENV["APP_IDENTIFIER"],
+      release_status: ENV["ANDROID_RELEASE_STATUS"] || "draft",
       json_key: File.join(CREDENTIALS_DIR, "playstore.json")
     )
 
@@ -145,5 +149,23 @@ platform :android do
         slack_url: ENV["FASTLANE_SLACK_WEBHOOK"]
       )
     end
+  end
+end
+
+platform :ios do
+  desc "Create App Store Connect app if missing"
+  lane :setup_appstore do
+    validate_env_var("APP_IDENTIFIER")
+    validate_env_var("APP_NAME")
+    validate_env_var("APPLE_TEAM_ID")
+    validate_env_var("FASTLANE_APPLE_ID")
+
+    produce(
+      username: ENV["FASTLANE_APPLE_ID"],
+      app_identifier: ENV["APP_IDENTIFIER"],
+      app_name: ENV["APP_NAME"],
+      team_id: ENV["APPLE_TEAM_ID"],
+      skip_itc: false
+    )
   end
 end
