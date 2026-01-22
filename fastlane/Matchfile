@@ -1,0 +1,18 @@
+storage_mode("s3")
+
+CREDENTIALS_DIR = ENV["CREDENTIALS_DIR"] || "/opt/developer/app-ci/credentials"
+
+app_identifier([ENV["APP_IDENTIFIER"] || raise("APP_IDENTIFIER environment variable is required")])
+
+team_id(ENV["APPLE_TEAM_ID"] || raise("APPLE_TEAM_ID environment variable is required"))
+
+type("appstore")
+s3_region("ap-northeast-2")
+s3_bucket(ENV["MATCH_S3_BUCKET_NAME"] || raise("MATCH_S3_BUCKET_NAME environment variable is required"))
+s3_access_key(ENV["MATCH_S3_ACCESS_KEY_ID"] || raise("MATCH_S3_ACCESS_KEY_ID environment variable is required"))
+s3_secret_access_key(ENV["MATCH_S3_SECRET_ACCESS_KEY"] || raise("MATCH_S3_SECRET_ACCESS_KEY environment variable is required"))
+
+
+output_path(File.join(CREDENTIALS_DIR, "match"))
+
+keychain_password(ENV["MATCH_KEYCHAIN_PASSWORD"])

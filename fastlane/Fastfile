@@ -1,0 +1,149 @@
+# fastlane/Fastfile
+default_platform(:ios)
+
+FASTLANE_DIR = File.expand_path(__dir__)
+CREDENTIALS_DIR = File.expand_path(File.join(FASTLANE_DIR, "..", "credentials"))
+
+def validate_env_var(name)
+  value = ENV[name]
+  if value.nil? || value.empty?
+    UI.user_error!("❌ Environment variable #{name} is required but not set")
+  end
+  value
+end
+
+def app_root_path
+  validate_env_var("APP_DIR")
+end
+
+
+platform :ios do
+
+
+  lane :beta do
+    app_root = app_root_path
+
+    # node 버전확인
+    sh("node -v")
+
+    # 환경변수 확인
+    validate_env_var("APP_IDENTIFIER")
+    validate_env_var("APP_NAME")
+    validate_env_var("APP_SCHEME")
+    validate_env_var("APPLE_TEAM_ID")
+    validate_env_var("APPLE_STORE_CONNECT_API_KEY_ID")
+    validate_env_var("APPLE_STORE_CONNECT_API_KEY_ISSUER_ID")
+    validate_env_var("APPLE_STORE_CONNECT_API_KEY_PATH")
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APPLE_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APPLE_STORE_CONNECT_API_KEY_ISSUER_ID"],
+      key_filepath: ENV["APPLE_STORE_CONNECT_API_KEY_PATH"],
+      duration: 1200,
+      in_house: false
+    )
+
+    # match를 사용하여 인증서와 프로비저닝 프로파일 다운로드 및 설치
+    # force: true로 설정하면 현재 키체인에 있는 인증서와 일치하는 프로파일 강제 재생성
+    match(
+      type: "appstore",
+      readonly: false,
+      app_identifier: ENV["APP_IDENTIFIER"],
+      force: true,  # 프로파일을 강제로 재생성하여 현재 인증서와 일치시킴
+      force_for_new_devices: true,  # 새 디바이스 추가 시에도 프로파일 재생성
+      api_key: api_key
+    )
+
+    profile_path = File.join(CREDENTIALS_DIR, "match", "AppStore_#{ENV['APP_IDENTIFIER']}.mobileprovision")
+    profile_name = "match AppStore #{ENV['APP_IDENTIFIER']}"
+    
+    # 프로파일 파일에서 실제 이름 추출
+    # if File.exist?(profile_path)
+    #   profile_info = sh("security cms -D -i '#{profile_path}' 2>/dev/null", log: false)
+    #   if profile_info && !profile_info.empty?
+    #     name_match = profile_info.match(/<key>Name<\/key>\s*<string>(.*?)<\/string>/m)
+    #     if name_match
+    #       profile_name = name_match[1]
+    #       UI.message("✅ 프로파일 이름: #{profile_name}")
+    #     end
+    #   end
+    # end
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: File.join(app_root, "ios", "#{ENV['APP_NAME']}.xcodeproj"),
+      team_id: ENV["APPLE_TEAM_ID"],
+      bundle_identifier: ENV["APP_IDENTIFIER"],
+      profile_name: profile_name,
+      code_sign_identity: "iPhone Distribution"
+    )
+    
+    gym(
+      scheme: ENV["APP_SCHEME"],
+      workspace: File.join(app_root, "ios", "#{ENV['APP_NAME']}.xcworkspace"),
+      export_method: "app-store",
+      codesigning_identity: "iPhone Distribution",
+      export_options: {
+        teamID: ENV["APPLE_TEAM_ID"],
+        signingStyle: "manual",
+        provisioningProfiles: {
+          ENV["APP_IDENTIFIER"] => profile_name
+        }
+      }
+    )
+
+    begin
+      pilot(api_key: api_key)
+      
+      # 성공 시 슬랙 메시지 (선택적)
+      if ENV["FASTLANE_SLACK_WEBHOOK"]
+        slack(
+          message: "✅ iOS beta build 배포 완료!\n앱: #{ENV['APP_IDENTIFIER']}\n스키마: #{ENV['APP_SCHEME']}",
+          slack_url: ENV["FASTLANE_SLACK_WEBHOOK"]
+        )
+      end
+    rescue => ex
+      # 실패 시 슬랙 메시지 (선택적)
+      if ENV["FASTLANE_SLACK_WEBHOOK"]
+        slack(
+          message: "❌ iOS beta build 배포 실패!\n앱: #{ENV['APP_IDENTIFIER']}\n스키마: #{ENV['APP_SCHEME']}\n에러: #{ex.message}",
+          slack_url: ENV["FASTLANE_SLACK_WEBHOOK"]
+        )
+      end
+      raise ex
+    end
+  end
+end
+
+platform :android do
+  lane :beta do
+    app_root = app_root_path
+    # 환경변수 확인
+    
+    keystore_path = File.join(CREDENTIALS_DIR, "androidkey", "#{ENV['APP_IDENTIFIER']}.jks")
+    unless File.exist?(keystore_path)
+      UI.user_error!("❌ Android keystore not found: #{keystore_path}")
+    end
+    ENV["ANDROID_KEYSTORE_PATH"] = keystore_path
+
+    gradle(
+      task: "bundle",
+      build_type: "Release",
+      project_dir: File.join(app_root, "android")
+    )
+    
+    upload_to_play_store(
+      track: "internal",
+      aab: File.join(app_root, "android", "app", "build", "outputs", "bundle", "release", "app-release.aab"),
+      json_key: File.join(CREDENTIALS_DIR, "playstore.json")
+    )
+
+    # 성공 시 슬랙 메시지 (선택적)
+    if ENV["FASTLANE_SLACK_WEBHOOK"]
+      slack(
+        message: "✅ Android beta build 배포 완료!\n패키지: #{ENV['APP_IDENTIFIER']}",
+        slack_url: ENV["FASTLANE_SLACK_WEBHOOK"]
+      )
+    end
+  end
+end
