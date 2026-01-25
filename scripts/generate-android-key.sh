@@ -19,9 +19,9 @@ KEY_DIR="${BASE_DIR}/credentials/androidkey"
 KEY_PATH="${KEY_DIR}/${APP_IDENTIFIER}.jks"
 
 if [[ -e "${KEY_PATH}" && "${FORCE:-}" != "1" ]]; then
-  echo "Keystore already exists: ${KEY_PATH}" >&2
-  echo "Set FORCE=1 to overwrite." >&2
-  exit 1
+  echo "Keystore already exists: ${KEY_PATH}"
+  echo "Skipping keystore generation. Set FORCE=1 to overwrite."
+  exit 0
 fi
 
 mkdir -p "${KEY_DIR}"
