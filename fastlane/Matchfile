@@ -1,6 +1,6 @@
 storage_mode("s3")
 
-CREDENTIALS_DIR = ENV["CREDENTIALS_DIR"] || "/opt/developer/app-ci/credentials"
+CREDENTIALS_DIR = ENV["CREDENTIALS_DIR"] || "/opt/app-ci/credentials"
 
 app_identifier([ENV["APP_IDENTIFIER"] || raise("APP_IDENTIFIER environment variable is required")])
 

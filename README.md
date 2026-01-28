@@ -7,7 +7,7 @@ Expo/EAS 앱 배포용 Fastlane 설정을 정리한 저장소입니다.
 ## 구성 요약
 
 - Fastlane 경로는 `APP_DIR` 기준으로 통일
-- Credentials 경로는 `/opt/developer/app-ci/credentials`로 고정
+- Credentials 경로는 `/opt/app-ci/credentials`로 고정
 - 앱 식별 변수는 `APP_IDENTIFIER`, `APP_NAME`, `APP_SCHEME`로 통일
 - Apple 팀 ID 변수는 `APPLE_TEAM_ID` 사용
 - Android 배포 전 keystore 존재 확인 (`credentials/androidkey/{APP_IDENTIFIER}.jks`)
@@ -15,7 +15,7 @@ Expo/EAS 앱 배포용 Fastlane 설정을 정리한 저장소입니다.
 ## 디렉토리 구조
 
 ```
-/opt/developer/app-ci
+/opt/app-ci
 ├── credentials
 │   ├── app-store-connect.p8
 │   ├── match/
@@ -44,17 +44,19 @@ Expo/EAS 앱 배포용 Fastlane 설정을 정리한 저장소입니다.
 
 ### ci.env(온프레미스)로 관리
 
-- `APPLE_TEAM_ID`
+- `CI_ENV_READY` (환경 변수 로드 확인용)
 - `FASTLANE_APPLE_ID`
+- `APPLE_TEAM_ID`
 - `APPLE_STORE_CONNECT_API_KEY_ID`
 - `APPLE_STORE_CONNECT_API_KEY_ISSUER_ID`
-- `APPLE_STORE_CONNECT_API_KEY_PATH` (기본: `/opt/developer/app-ci/credentials/app-store-connect.p8`)
-- `MATCH_S3_BUCKET_NAME`
+- `APPLE_STORE_CONNECT_API_KEY_PATH` (기본: `/opt/app-ci/credentials/app-store-connect.p8`)
 - `MATCH_S3_ACCESS_KEY_ID`
 - `MATCH_S3_SECRET_ACCESS_KEY`
+- `MATCH_S3_BUCKET_NAME`
 - `MATCH_KEYCHAIN_PASSWORD` (선택)
+- `APPLE_KEYCHAIN_PASSWORD` (선택)
 - `FASTLANE_SLACK_WEBHOOK` (선택)
-- `ANDROID_RELEASE_STATUS` (선택, 기본: `draft`)
+- `ANDROID_HOME` (선택)
 
 `ci.env` 예시는 `ci.env.template`를 참고하세요.
 
@@ -86,10 +88,21 @@ bundle exec fastlane ios setup_appstore
 ## Scripts
 
 - `scripts/generate-android-key.sh`: 환경변수를 참조해 Android keystore 생성
-- `scripts/source-env.sh`: 실행 위치의 `.env`와 `.ci`를 읽어 터미널 세션에 환경변수 추가
-- `scripts/deploy.sh`: `prebuild` → `fastlane ios` → `fastlane android` 순으로 실행
+- `scripts/source-env.sh`: `/opt/app-ci/ci.env`를 읽어 터미널 세션에 환경변수 추가
+- `scripts/deploy.sh`: `prebuild` → `fastlane ios` → `fastlane android` 순으로 실행 (현재 디렉토리의 `.env`와 `/opt/app-ci/ci.env`를 자동으로 로드)
 
 ## 참고
 
 - iOS 인증서/프로비저닝은 `match`를 사용하며, 프로파일은 `credentials/match/` 경로를 사용합니다.
 - Android keystore가 없으면 배포가 실패합니다.
+
+
+### Unable to locate Xcode. Please make sure to have Xcode installed on your machine 
+
+```
+sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+```
+
+- https://github.com/fastlane/fastlane/issues/12662
+
+

@@ -1,4 +1,3 @@
 set -a
-source /opt/developer/app-ci/ci.env
-source "${ENV_FILE_DIR:-$(pwd)}/.env"
+source /opt/app-ci/ci.env
 set +a
